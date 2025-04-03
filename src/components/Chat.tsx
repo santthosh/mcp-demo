@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, TextInput, Button, Avatar } from 'flowbite-react';
-import OpenAI from 'openai';
 import { HiOutlineChatAlt2 } from 'react-icons/hi';
 import { format } from 'date-fns';
 
@@ -18,11 +17,6 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const openai = new OpenAI({
-    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true
-  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,18 +42,28 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const completion = await openai.chat.completions.create({
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant for booking appointments. Keep responses concise and focused on gathering necessary information for appointment booking.' },
-          ...messages.map(msg => ({ role: msg.role, content: msg.content })),
-          { role: 'user', content: input }
-        ],
-        model: 'gpt-3.5-turbo',
+      const response = await fetch('/api/openai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant for booking appointments. Keep responses concise and focused on gathering necessary information for appointment booking.' },
+            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
+            { role: 'user', content: input }
+          ]
+        })
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to get response from OpenAI');
+      }
+
+      const data = await response.json();
       const assistantMessage: Message = {
         role: 'assistant',
-        content: completion.choices[0].message.content || 'Sorry, I could not process your request.',
+        content: data.choices[0].message.content || 'Sorry, I could not process your request.',
         timestamp: new Date()
       };
 
@@ -85,11 +89,13 @@ export default function Chat() {
               key={index}
               className={`flex items-start gap-2.5 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              <Avatar
-                className="w-8 h-8 rounded-full"
-                img={message.role === 'user' ? undefined : 'https://flowbite.com/docs/images/people/profile-picture-3.jpg'}
-                status={message.role === 'user' ? 'online' : undefined}
-              />
+              <div className="w-8 h-8 flex-none">
+                <Avatar
+                  className="w-full h-full rounded-full"
+                  img={message.role === 'user' ? undefined : 'https://flowbite.com/docs/images/people/profile-picture-5.jpg'}
+                  status={message.role === 'user' ? 'online' : undefined}
+                />
+              </div>
               <div className={`flex flex-col min-w-[160px] max-w-[320px] leading-1.5 p-3 border-gray-200 ${
                 message.role === 'user'
                   ? 'bg-gray-100 text-gray-900 rounded-s-xl rounded-ee-xl'
@@ -107,6 +113,26 @@ export default function Chat() {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 flex-none">
+                <Avatar
+                  className="w-full h-full rounded-full"
+                  img="https://flowbite.com/docs/images/people/profile-picture-5.jpg"
+                />
+              </div>
+              <div className="flex flex-col min-w-[160px] max-w-[320px] leading-1.5 p-3 border-gray-200 bg-blue-600 text-white rounded-e-xl rounded-es-xl">
+                <div className="flex items-center justify-between space-x-2 rtl:space-x-reverse">
+                  <span className="text-sm font-semibold">Assistant</span>
+                </div>
+                <div className="flex space-x-1 py-1.5">
+                  <div className="w-2 h-2 rounded-full bg-blue-200 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-200 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-200 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
       </Card>
@@ -119,7 +145,7 @@ export default function Chat() {
           <input
             ref={inputRef}
             type="text"
-            className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-0 focus:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
