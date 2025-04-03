@@ -2,23 +2,24 @@ export interface Service {
   id: string;
   name: string;
   description: string;
-  duration: number; // in minutes
+  duration: number;
   price: number;
 }
 
 export interface Staff {
   id: string;
   name: string;
-  title: string;
-  serviceIds: string[]; // services they can perform
+  serviceIds: string[];
+  availability: {
+    [key: string]: string[]; // day -> available time slots
+  };
 }
 
 export interface TimeSlot {
-  startTime: string; // ISO string
-  endTime: string; // ISO string
+  startTime: string;
+  endTime: string;
   staffId: string;
   serviceId: string;
-  available: boolean;
 }
 
 export interface Appointment {
@@ -26,8 +27,8 @@ export interface Appointment {
   serviceId: string;
   staffId: string;
   customerId: string;
-  startTime: string; // ISO string
-  endTime: string; // ISO string
+  startTime: string;
+  endTime: string;
   status: 'confirmed' | 'cancelled' | 'completed';
 }
 
@@ -36,10 +37,4 @@ export interface BookAppointmentRequest {
   staffId: string;
   startTime: string;
   customerId: string;
-}
-
-export interface MCPResponse<T> {
-  status: 'success' | 'error';
-  data?: T;
-  error?: string;
 } 
